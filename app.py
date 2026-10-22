@@ -7,8 +7,10 @@ import streamlit as st
 
 import motor
 from exportar import generar_excel
+from portal import menu_apps
 
 st.set_page_config(page_title="Verificación de Traspasos", page_icon="📦", layout="wide")
+menu_apps("Verificación de traspasos")
 
 
 # ------------------------------------------------------------------ helpers
