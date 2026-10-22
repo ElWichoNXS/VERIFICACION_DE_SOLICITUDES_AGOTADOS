@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+# no subir datos de la empresa al repositorio
+*.xlsx
+*.xls
+*.xlsb
+*.xlsm
+*.csv
+!tests/datos/*.csv
