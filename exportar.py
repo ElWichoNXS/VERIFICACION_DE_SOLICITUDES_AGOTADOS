@@ -12,7 +12,7 @@ from openpyxl.utils import get_column_letter
 
 from motor import Resultado
 
-MORADO = "5B2C83"
+MORADO = "A30410"  # rojo oscuro (mismo estilo que la app Min/Max)
 ROJO = "C00000"
 thin = Side(style="thin", color="BFBFBF")
 BORDE = Border(left=thin, right=thin, top=thin, bottom=thin)
