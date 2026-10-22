@@ -43,11 +43,35 @@ def codigo(valor):
 
 
 def _num(v) -> float:
-    try:
-        x = float(v)
-        return 0.0 if pd.isna(x) else x
-    except (TypeError, ValueError):
+    """Convierte a número; acepta '1.234,5', '1,5', '12' y vacíos."""
+    if v is None:
         return 0.0
+    if isinstance(v, (int, float)):
+        return 0.0 if pd.isna(v) else float(v)
+    t = str(v).strip().replace(" ", "")
+    if not t:
+        return 0.0
+    if "," in t and "." in t:
+        t = t.replace(".", "").replace(",", ".") if t.rfind(",") > t.rfind(".") else t.replace(",", "")
+    elif "," in t:
+        t = t.replace(",", ".")
+    try:
+        return float(t)
+    except ValueError:
+        return 0.0
+
+
+def _leer_csv(archivo) -> pd.DataFrame:
+    """CSV con separador , ; o tab, en UTF-8 (con o sin BOM) o Latin-1."""
+    datos = archivo.read() if hasattr(archivo, "read") else open(archivo, "rb").read()
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            texto = datos.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    import io as _io
+    return pd.read_csv(_io.StringIO(texto), header=None, dtype=object, sep=None, engine="python")
 
 
 def _fmt(n) -> int | float:
@@ -93,7 +117,7 @@ def leer_base(archivo, hoja: str | int | None = None) -> pd.DataFrame:
     """Lee la base del BI (xlsx/xls/xlsb/csv) y devuelve columnas estándar."""
     nombre = getattr(archivo, "name", str(archivo)).lower()
     if nombre.endswith(".csv"):
-        raw = pd.read_csv(archivo, header=None, dtype=object, sep=None, engine="python")
+        raw = _leer_csv(archivo)
     else:
         engine = "pyxlsb" if nombre.endswith(".xlsb") else None
         raw = pd.read_excel(archivo, sheet_name=hoja if hoja is not None else 0, header=None, dtype=object, engine=engine)
@@ -142,7 +166,7 @@ COLUMNAS_SOL = {
 def leer_solicitudes(archivo, hoja: str | int | None = None) -> pd.DataFrame:
     nombre = getattr(archivo, "name", str(archivo)).lower()
     if nombre.endswith(".csv"):
-        raw = pd.read_csv(archivo, header=None, dtype=object, sep=None, engine="python")
+        raw = _leer_csv(archivo)
     else:
         raw = pd.read_excel(archivo, sheet_name=hoja if hoja is not None else 0, header=None, dtype=object)
     h = _buscar_encabezado(raw, ["ORIGEN", "ESTADISTICO", "CANT"], max_filas=20)
