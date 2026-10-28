@@ -262,20 +262,20 @@ with c1:
         except Exception as e:
             st.error(str(e))
 with c2:
-    t_arch, t_pegar = st.tabs(["2) Subir solicitudes", "Pegar / digitar"])
-    with t_arch:
-        f_sol = st.file_uploader("Solicitudes de traspaso", type=["xlsx", "xlsm", "xls", "csv"], key="sol",
-                                 help="Columnas: 'Loc. Origen', 'Loc. Destino', 'Estadístico', 'Cantidad'. "
-                                      "Sirve el reporte de Solicitud de Traspasos.")
-        if f_sol:
-            data = f_sol.getvalue()
-            hoja = elegir_hoja(st, data, f_sol.name, ["TRASLADOS", "SOLICITUD", "TRASPASO"], "hoja_sol")
-            try:
-                sol = cargar_solicitudes(data, f_sol.name, hoja)
-            except Exception as e:
-                st.error(str(e))
-    with t_pegar:
-        st.caption("Copia las 4 columnas desde Excel y pégalas en la primera celda (Ctrl+V).")
+    f_sol = st.file_uploader("2) Solicitudes de traspaso", type=["xlsx", "xlsm", "xls", "csv"], key="sol",
+                             help="Columnas: 'Loc. Origen', 'Loc. Destino', 'Estadístico', 'Cantidad'. "
+                                  "Sirve el reporte de Solicitud de Traspasos.")
+    if f_sol:
+        data = f_sol.getvalue()
+        hoja = elegir_hoja(st, data, f_sol.name, ["TRASLADOS", "SOLICITUD", "TRASPASO"], "hoja_sol")
+        try:
+            sol = cargar_solicitudes(data, f_sol.name, hoja)
+        except Exception as e:
+            st.error(str(e))
+    estado_sol = st.empty()  # confirmación a la misma altura que la de la base
+    with st.expander("✏️ ¿Sin archivo? Pega o digita las solicitudes", expanded=bool(st.session_state.get("_hay_pegado"))):
+        st.caption("Copia las 4 columnas desde Excel y pégalas en la primera celda (Ctrl+V). "
+                   "Si también subes un archivo, se usa el archivo.")
         vacio = pd.DataFrame({"Loc. Origen": [""] * 8, "Loc. Destino": [""] * 8,
                               "Estadístico": [""] * 8, "Cantidad": [float("nan")] * 8})
         editado = st.data_editor(vacio, num_rows="dynamic", width="stretch", key="editor", height=250,
@@ -288,7 +288,7 @@ with c2:
             except Exception as e:
                 st.error(str(e))
     if sol is not None:
-        st.caption(f"✅ {len(sol)} solicitudes · {n(sol['cantidad'].sum())} unidades")
+        estado_sol.caption(f"✅ {len(sol)} solicitudes · {n(sol['cantidad'].sum())} unidades")
 
 if base is None or sol is None or not len(sol):
     nota("Sube la base del BI y las solicitudes (o pégalas) para ver el análisis y descargar el Excel. "
