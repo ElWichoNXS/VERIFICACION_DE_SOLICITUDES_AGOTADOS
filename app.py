@@ -13,7 +13,7 @@ import estilo
 import motor
 import portal
 
-VERSION_ESTILO = "2026-11-11.2"
+VERSION_ESTILO = "2026-11-11.3"
 if getattr(estilo, "VERSION", None) != VERSION_ESTILO:   # módulos viejos en memoria tras actualizar el repositorio
     import importlib
     for _m in (estilo, portal):
