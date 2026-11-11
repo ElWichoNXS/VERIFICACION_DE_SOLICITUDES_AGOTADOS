@@ -9,122 +9,24 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+import estilo
 import motor
-from exportar import generar_excel
-from portal import menu_apps
+import portal
 
-st.set_page_config(page_title="Verificación de Traspasos", page_icon="📦", layout="wide")
+VERSION_ESTILO = "2026-11-11.2"
+if getattr(estilo, "VERSION", None) != VERSION_ESTILO:   # módulos viejos en memoria tras actualizar el repositorio
+    import importlib
+    for _m in (estilo, portal):
+        importlib.reload(_m)
+
+from estilo import (C_ALT, C_BAJO, C_EXT, C_OK, C_PEND, ROJO, ROJO_OSC, alto_tabla, aplicar_estilo, chips, encabezado,
+                    grafico, kpis, n, nota, nota_html, pct, seccion, vacio)  # noqa: E402
+from exportar import generar_excel  # noqa: E402
+from portal import menu_apps  # noqa: E402
+
+st.set_page_config(page_title="Verificación de Traspasos", page_icon=":material/fact_check:", layout="wide")
 menu_apps("Verificación de traspasos")
-
-# ----------------------------------------------------------------------
-# Estilo (mismo lenguaje visual que la app Min/Max): rojo y blanco como base;
-# texto y fondos heredan del tema claro/oscuro.
-# ----------------------------------------------------------------------
-ROJO, ROJO_OSC = "#E30613", "#A30410"
-C_OK, C_ALT, C_BAJO, C_EXT, C_PEND = "#1FA391", "#4B86E6", "#D39A2E", "#E5414B", "#8C8C8C"
-BORDE = "color-mix(in srgb, currentColor 16%, transparent)"
-TARJETA = "color-mix(in srgb, currentColor 4%, transparent)"
-
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, .stApp, h1, h2, h3, h4, p, label, li, button, input, textarea {{ font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }}
-.block-container {{ padding-top: 1rem; max-width: 1480px; }}
-header[data-testid="stHeader"] {{ background: transparent; }}
-
-.hero {{ background: linear-gradient(115deg, {ROJO} 0%, {ROJO_OSC} 100%); border-radius: 16px;
-    padding: 22px 30px; display: flex; justify-content: space-between; align-items: center; gap: 24px;
-    box-shadow: 0 8px 24px rgba(227,6,19,.25); flex-wrap: wrap; }}
-.hero h1 {{ color:#fff !important; margin:0; font-size:1.75rem; font-weight:800; letter-spacing:-.4px; padding:0; }}
-.hero p {{ color:#ffe3e5 !important; margin:4px 0 0 0; font-size:.95rem; }}
-.pasos {{ display:flex; gap:10px; flex-wrap:wrap; }}
-.paso {{ display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.14); color:#fff;
-    padding:7px 14px 7px 8px; border-radius:30px; font-size:.82rem; font-weight:600; }}
-.paso b {{ width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.28); display:flex;
-    align-items:center; justify-content:center; font-size:.78rem; }}
-.paso.ok {{ background:#fff; color:{ROJO}; }}
-.paso.ok b {{ background:{ROJO}; color:#fff; }}
-
-.kpis {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin:6px 0 4px 0; }}
-.kpi {{ background:{TARJETA}; border:1px solid {BORDE}; border-radius:14px; padding:16px 18px; position:relative; overflow:hidden; }}
-.kpi::before {{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--ac, {ROJO}); }}
-.kpi .l {{ font-size:.8rem; font-weight:600; opacity:.7; }}
-.kpi .v {{ font-size:1.9rem; font-weight:800; letter-spacing:-.6px; line-height:1.15; margin-top:2px; }}
-.kpi .s {{ font-size:.78rem; opacity:.62; margin-top:2px; }}
-
-.seccion {{ margin: 22px 0 8px 0; font-size:1.12rem; font-weight:800; letter-spacing:-.2px; }}
-.seccion small {{ display:block; font-weight:400; opacity:.62; font-size:.84rem; letter-spacing:0; margin-top:1px; }}
-.nota {{ border-left:4px solid {ROJO}; background:{TARJETA}; padding:10px 14px; border-radius:0 10px 10px 0; font-size:.88rem; }}
-.nota.ok {{ border-left-color:{C_OK}; }}
-.nota.warn {{ border-left-color:{C_BAJO}; }}
-
-/* Embudo de cobertura */
-.flujo {{ display:flex; gap:0; border-radius:12px; overflow:hidden; border:1px solid {BORDE}; margin:6px 0 2px 0; }}
-.flujo div {{ padding:10px 12px; color:#fff; font-size:.8rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
-.leyenda {{ display:flex; gap:16px; flex-wrap:wrap; font-size:.8rem; opacity:.85; margin-top:6px; }}
-.leyenda span::before {{ content:""; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; background:var(--c); }}
-
-section[data-testid="stSidebar"] {{ border-right:1px solid {BORDE}; }}
-section[data-testid="stSidebar"] h2 {{ color:{ROJO} !important; font-size:1.15rem; font-weight:800; }}
-div[data-testid="stFileUploader"] section {{ background:rgba(227,6,19,.06); border:2px dashed {ROJO}; border-radius:14px; min-height:92px; align-items:center; }}
-div[data-testid="stFileUploader"] label p {{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
-button[data-testid="stBaseButton-primary"], div[data-testid="stDownloadButton"] button {{
-    background:{ROJO}; color:#fff; border:none; border-radius:10px; font-weight:700; box-shadow:0 3px 10px rgba(227,6,19,.3); }}
-button[data-testid="stBaseButton-primary"]:hover, div[data-testid="stDownloadButton"] button:hover {{ background:{ROJO_OSC}; color:#fff; border:none; }}
-button[data-testid="stBaseButton-primary"] p, div[data-testid="stDownloadButton"] button p {{ color:#fff; }}
-button[data-testid="stBaseButton-secondary"] {{ border:1.5px solid {ROJO}; border-radius:10px; font-weight:600; }}
-button[data-baseweb="tab"] {{ font-weight:700; }}
-button[data-baseweb="tab"][aria-selected="true"] {{ color:{ROJO}; }}
-div[data-baseweb="tab-highlight"] {{ background-color:{ROJO}; height:3px; }}
-div[data-testid="stDataFrame"] {{ border:1px solid {BORDE}; border-radius:12px; overflow:hidden; }}
-div[data-testid="stExpander"] {{ border:1px solid {BORDE}; border-radius:12px; background:{TARJETA}; }}
-div[data-testid="stExpander"] summary p {{ font-weight:700; }}
-div[data-testid="stVerticalBlockBorderWrapper"] {{ border-radius:14px; }}
-hr {{ border-color:{BORDE}; }}
-</style>
-""", unsafe_allow_html=True)
-
-
-# ----------------------------------------------------------------------
-# Utilidades de presentación
-# ----------------------------------------------------------------------
-def seccion(titulo, sub=""):
-    st.markdown(f'<div class="seccion">{titulo}<small>{sub}</small></div>', unsafe_allow_html=True)
-
-
-def kpis(items):
-    """items: (etiqueta, valor, subtítulo, color)"""
-    html = "".join(
-        f'<div class="kpi" style="--ac:{c}"><div class="l">{l}</div><div class="v">{v}</div><div class="s">{s}</div></div>'
-        for l, v, s, c in items)
-    st.markdown(f'<div class="kpis">{html}</div>', unsafe_allow_html=True)
-
-
-def nota(texto, tipo=""):
-    st.markdown(f'<div class="nota {tipo}">{texto}</div>', unsafe_allow_html=True)
-
-
-def n(x):
-    x = float(x or 0)
-    return f"{int(round(x)):,}".replace(",", ".") if abs(x - round(x)) < 1e-9 else f"{x:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def alto_tabla(filas, maximo=460):
-    """Alto justo para la tabla (sin filas vacías), con tope."""
-    return min(maximo, 35 * (filas + 1) + 3)
-
-
-def pct(a, b):
-    return f"{a / b:.0%}" if b else "0%"
-
-
-def grafico(titulo, sub, chart):
-    with st.container(border=True):
-        st.markdown(f"**{titulo}**" + (f"  \n<span style='opacity:.62;font-size:.82rem'>{sub}</span>" if sub else ""),
-                    unsafe_allow_html=True)
-        # fit-x: el ancho se ajusta al contenedor; el alto se respeta (la leyenda no aplasta las barras)
-        chart = chart.properties(autosize=alt.AutoSizeParams(type="fit-x", contains="padding"))
-        st.altair_chart(chart, width="stretch")
+aplicar_estilo()   # mismo lenguaje visual que Distribución de estadísticos y Min/Max (estilo.py)
 
 
 def barras_h(df, cat, val, color=None, escala=None, alto=None, titulo_val="Unidades", orden="-x"):
@@ -199,7 +101,7 @@ def elegir_hoja(contenedor, data, nombre, preferidas, key):
 # ----------------------------------------------------------------------
 with st.sidebar:
     st.header("Parámetros")
-    st.caption("El signo ❓ explica cada opción.")
+    st.caption("El ícono de ayuda junto a cada opción explica qué hace.")
     with st.expander("Reglas de búsqueda", expanded=True):
         excluir = st.checkbox("No usar como alternativo a un local que ya es origen del mismo ítem", value=True,
                               help="Evita sugerir un local que ya está cediendo ese estadístico en otra fila de la solicitud.")
@@ -210,7 +112,7 @@ with st.sidebar:
                                   help="Lo que no cubren los alternativos se saca del local de origen, hasta agotar su físico.")
         extremos = st.checkbox("Paso 4 · Completar con otros locales aunque queden bajo exhibición", value=True,
                                help="Solo se usa cuando el origen ya quedó en 0. Empieza por el local con más stock físico.")
-    with st.expander("📘 Cómo decide el programa"):
+    with st.expander("Cómo decide el programa", icon=":material/help:"):
         st.markdown(
             "**Orden de cobertura de cada solicitud**\n\n"
             "1. **Origen** sin bajar de su exhibición.\n"
@@ -227,20 +129,9 @@ opciones = (excluir, mismo_sup, extremos, origen_bajo)
 # ----------------------------------------------------------------------
 hay_base = st.session_state.get("base") is not None
 hay_sol = st.session_state.get("sol") is not None or bool(st.session_state.get("_hay_pegado"))
-paso_cls = lambda ok: "paso ok" if ok else "paso"
-st.markdown(f"""
-<div class="hero">
-  <div>
-    <h1>Verificación de Solicitudes de Traspaso</h1>
-    <p>Valida que los traspasos no dejen locales sin exhibición y propone desde dónde sacar la mercadería.</p>
-  </div>
-  <div class="pasos">
-    <div class="{paso_cls(hay_base)}"><b>1</b>Cargar base del BI</div>
-    <div class="{paso_cls(hay_sol)}"><b>2</b>Cargar solicitudes</div>
-    <div class="{paso_cls(hay_base and hay_sol)}"><b>3</b>Revisar y descargar</div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+encabezado("Verificación de Solicitudes de Traspaso",
+           "Valida que los traspasos no dejen locales sin exhibición y propone desde dónde sacar la mercadería.",
+           [("Cargar base del BI", hay_base), ("Cargar solicitudes", hay_sol), ("Revisar y descargar", hay_base and hay_sol)])
 
 # ----------------------------------------------------------------------
 # Carga
@@ -257,8 +148,8 @@ with c1:
         hoja = elegir_hoja(st, data, f_base.name, ["INVENTARIO", "BASE"], "hoja_base")
         try:
             base = cargar_base(data, f_base.name, hoja)
-            st.caption(f"✅ {n(len(base))} registros · {base['local'].nunique()} locales · "
-                       f"{base['estadistico'].nunique()} estadísticos")
+            chips([f"<b>{n(len(base))}</b> registros", f"<b>{base['local'].nunique()}</b> locales",
+                   f"<b>{base['estadistico'].nunique()}</b> estadísticos"])
         except Exception as e:
             st.error(str(e))
 with c2:
@@ -273,12 +164,12 @@ with c2:
         except Exception as e:
             st.error(str(e))
     estado_sol = st.empty()  # confirmación a la misma altura que la de la base
-    with st.expander("✏️ ¿Sin archivo? Pega o digita las solicitudes", expanded=bool(st.session_state.get("_hay_pegado"))):
+    with st.expander("¿Sin archivo? Pega o digita las solicitudes", icon=":material/edit_note:", expanded=bool(st.session_state.get("_hay_pegado"))):
         st.caption("Copia las 4 columnas desde Excel y pégalas en la primera celda (Ctrl+V). "
                    "Si también subes un archivo, se usa el archivo.")
-        vacio = pd.DataFrame({"Loc. Origen": [""] * 8, "Loc. Destino": [""] * 8,
+        vacio_df = pd.DataFrame({"Loc. Origen": [""] * 8, "Loc. Destino": [""] * 8,
                               "Estadístico": [""] * 8, "Cantidad": [float("nan")] * 8})
-        editado = st.data_editor(vacio, num_rows="dynamic", width="stretch", key="editor", height=250,
+        editado = st.data_editor(vacio_df, num_rows="dynamic", width="stretch", key="editor", height=250,
                                  column_config={"Cantidad": st.column_config.NumberColumn(min_value=0, step=1)})
         pegado = editado.replace("", pd.NA).dropna(how="all")
         st.session_state["_hay_pegado"] = len(pegado) > 0
@@ -288,11 +179,14 @@ with c2:
             except Exception as e:
                 st.error(str(e))
     if sol is not None:
-        estado_sol.caption(f"✅ {len(sol)} solicitudes · {n(sol['cantidad'].sum())} unidades")
+        with estado_sol:
+            chips([f"<b>{len(sol)}</b> solicitudes", f"<b>{n(sol['cantidad'].sum())}</b> unidades"])
 
 if base is None or sol is None or not len(sol):
-    nota("Sube la base del BI y las solicitudes (o pégalas) para ver el análisis y descargar el Excel. "
-         "Las opciones de la izquierda ya traen sus valores recomendados.")
+    vacio("Carga los archivos para ver el análisis",
+          "Sube la base del BI y las solicitudes (o pégalas). Los gráficos y el Excel de resultados aparecen aquí. "
+          "Las opciones de la izquierda ya traen sus valores recomendados.",
+          [("Base del BI", base is not None), ("Solicitudes", sol is not None and len(sol) > 0)])
     st.stop()
 
 # ----------------------------------------------------------------------
@@ -305,18 +199,18 @@ tot = r["und_solicitadas"]
 sin_afectar = r["paso1"] + r["paso2"]
 bajo = r["paso3"] + r["paso4"]
 
-st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-d1, d2 = st.columns([3, 1.3])
+d1, d2 = st.columns([3, 1.3], vertical_alignment="center")
 if r["pendiente"] > 0:
-    d1.markdown(f'<div class="nota">⚠️ <b>{n(r["pendiente"])}</b> unidades no se pueden cubrir con ningún local de la base. '
-                f'Revisa la pestaña <b>Pendientes</b>.</div>', unsafe_allow_html=True)
+    d1.markdown(nota_html(f'<b>{n(r["pendiente"])}</b> unidades no se pueden cubrir con ningún local de la base. '
+                          f'Revisa la pestaña <b>Pendientes</b>.', "err"), unsafe_allow_html=True)
 elif bajo > 0:
-    d1.markdown(f'<div class="nota warn">Se cubre todo lo solicitado, pero <b>{n(bajo)}</b> unidades dejan locales bajo su exhibición '
-                f'({r["locales_bajo_exh"]} local/ítem). Revisa el <b>Reporte bajo exhibición</b>.</div>', unsafe_allow_html=True)
-else:
-    d1.markdown('<div class="nota ok">✅ Se cubre todo lo solicitado sin dejar ningún local bajo su exhibición.</div>',
+    d1.markdown(nota_html(f'Se cubre todo lo solicitado, pero <b>{n(bajo)}</b> unidades dejan locales bajo su exhibición '
+                          f'({r["locales_bajo_exh"]} local/ítem). Revisa el <b>Reporte bajo exhibición</b>.', "warn"),
                 unsafe_allow_html=True)
-d2.download_button("⬇️ Descargar Excel de resultados", data=excel,
+else:
+    d1.markdown(nota_html("Se cubre todo lo solicitado sin dejar ningún local bajo su exhibición.", "ok"),
+                unsafe_allow_html=True)
+d2.download_button("Descargar Excel de resultados", icon=":material/download:", data=excel,
                    file_name=f"VERIFICACION_TRASPASOS_{datetime.now():%Y%m%d_%H%M}.xlsx",
                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
 
@@ -492,7 +386,7 @@ with t_rep:
             "Motivo": st.column_config.TextColumn(width="large"),
         })
     else:
-        nota("✅ Ningún local queda bajo su exhibición con estos traspasos.", "ok")
+        nota("Ningún local queda bajo su exhibición con estos traspasos.", "ok")
 
 # ============================ DETALLE ============================
 with t_det:
@@ -516,4 +410,4 @@ with t_pen:
         st.dataframe(res.pendientes, hide_index=True, width="stretch", height=alto_tabla(len(res.pendientes)),
                      column_config={"Descripción": st.column_config.TextColumn(width="large")})
     else:
-        nota("✅ Todo lo solicitado quedó cubierto.", "ok")
+        nota("Todo lo solicitado quedó cubierto.", "ok")
